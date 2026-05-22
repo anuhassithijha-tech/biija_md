@@ -3,7 +3,7 @@ const { cmd } = require("../command");
 cmd({
     pattern: "forward",
     alias: ["fw"],
-    desc: "Forward replied media/text message",
+    desc: "Forward replied message to jid",
     category: "tools",
     react: "📤",
     filename: __filename
@@ -12,38 +12,37 @@ async (conn, mek, m, { args, reply }) => {
 
     try {
 
+        // JID
         const jid = args[0];
 
         if (!jid) {
-            return reply("❌ Example:\n.forward 9477xxxx@s.whatsapp.net");
+            return reply("❌ Example:\n.forward 94771234567@s.whatsapp.net");
         }
 
-        // check reply
-        const quoted = mek.message?.extendedTextMessage?.contextInfo;
+        // Reply check
+        const contextInfo =
+            mek.message?.extendedTextMessage?.contextInfo;
 
-        if (!quoted) {
-            return reply("❌ Video/Image/Message එකකට reply කරන්න");
+        if (!contextInfo || !contextInfo.quotedMessage) {
+            return reply("❌ Message එකකට reply කරන්න");
         }
 
-        // REAL FORWARD
-        await conn.copyNForward(
+        // Quoted message
+        const quotedMessage = contextInfo.quotedMessage;
+
+        // Forward exact message
+        await conn.relayMessage(
             jid,
+            quotedMessage,
             {
-                key: {
-                    remoteJid: mek.key.remoteJid,
-                    fromMe: false,
-                    id: quoted.stanzaId,
-                    participant: quoted.participant
-                },
-                message: quoted.quotedMessage
-            },
-            true
+                messageId: contextInfo.stanzaId
+            }
         );
 
-        reply("✅ Forwarded successfully!");
+        reply("✅ Message Forwarded!");
 
     } catch (e) {
-        console.log("[FORWARD ERROR]", e);
-        reply("❌ Forward failed");
+        console.log(e);
+        reply("❌ Forward Failed");
     }
 });
