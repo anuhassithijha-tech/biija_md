@@ -4,7 +4,7 @@ commands.push({
     pattern: "forward",
     alias: ["fw"],
     react: "📨",
-    desc: "Forward replied message",
+    desc: "Forward replied media/message",
     category: "owner",
 
     async function(danuwa, mek, m, {
@@ -15,7 +15,7 @@ commands.push({
 
         try {
 
-            // OWNER NUMBER
+            // OWNER
             const owners = ["94742838813"];
 
             if (!owners.includes(senderNumber)) {
@@ -37,15 +37,26 @@ commands.push({
                 return reply(
 `⚠️ Example:
 
-.forward 94761234567@s.whatsapp.net`
+.fw 94761234567@s.whatsapp.net`
                 );
             }
 
-            // FORWARD REAL MESSAGE
-            await danuwa.relayMessage(
+            // CREATE FAKE MESSAGE
+            const fakeObj = {
+                key: {
+                    remoteJid: mek.key.remoteJid,
+                    fromMe: false,
+                    id: quoted.stanzaId,
+                    participant: quoted.participant
+                },
+                message: quoted.quotedMessage
+            };
+
+            // COPY & FORWARD
+            await danuwa.copyNForward(
                 jid,
-                quoted.quotedMessage,
-                {}
+                fakeObj,
+                true
             );
 
             return reply("✅ Successfully forwarded!");
