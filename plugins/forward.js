@@ -16,7 +16,7 @@ commands.push({
         try {
 
             // OWNER NUMBER
-            const owners = ["94785936039"];
+            const owners = ["94742838813"];
 
             if (!owners.includes(senderNumber)) {
                 return reply("❌ Owner only");
