@@ -3,7 +3,7 @@ const axios = require("axios");
 cmd({
     pattern: "cinesubz",
     desc: "Download movies",
-    category: "download",
+    category: "movie",
     filename: __filename,
 }, async (bot, mek, m, { from, q, reply }) => {
     try {
@@ -58,7 +58,7 @@ cmd({
                 const detailsRes = await axios.get(`https://nexora.laksidunimsara.com/cinesubz/details`, {
                     params: {
                         url: selected.link,
-                        api_key: "මෙතානටත් key එක දාන්න"
+                        api_key: "lakiya_6dfa6b43064dd56b5c71acb12fc9b30e4d88dd0deb19c8b14f897d12fc87b8e6"
                     }
                 });
                 const movie = detailsRes.data.data;
