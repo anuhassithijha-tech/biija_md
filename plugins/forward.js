@@ -4,28 +4,33 @@ commands.push({
     pattern: "forward",
     alias: ["fw"],
     react: "📨",
-    desc: "Forward messages",
+    desc: "Forward replied message",
     category: "owner",
 
     async function(danuwa, mek, m, {
         body,
         reply,
-        isOwner
+        senderNumber
     }) {
 
         try {
 
-            if (!isOwner) {
+            // OWNER NUMBER
+            const owners = ["94785936039"];
+
+            if (!owners.includes(senderNumber)) {
                 return reply("❌ Owner only");
             }
 
-            // reply check
-            if (!mek.message.extendedTextMessage) {
+            // MUST REPLY
+            const quoted = mek.message?.extendedTextMessage?.contextInfo;
+
+            if (!quoted || !quoted.quotedMessage) {
                 return reply("⚠️ Reply to a message");
             }
 
-            // jid
-            const args = body.split(" ");
+            // TARGET JID
+            const args = body.trim().split(" ");
             const jid = args[1];
 
             if (!jid) {
@@ -36,25 +41,14 @@ commands.push({
                 );
             }
 
-            // context info
-            const context = mek.message.extendedTextMessage.contextInfo;
-
-            // forward
-            await danuwa.sendMessage(
+            // FORWARD REAL MESSAGE
+            await danuwa.relayMessage(
                 jid,
-                {
-                    forward: {
-                        key: {
-                            remoteJid: mek.key.remoteJid,
-                            id: context.stanzaId,
-                            participant: context.participant
-                        },
-                        message: context.quotedMessage
-                    }
-                }
+                quoted.quotedMessage,
+                {}
             );
 
-            return reply("✅ Forwarded Successfully");
+            return reply("✅ Successfully forwarded!");
 
         } catch (err) {
 
