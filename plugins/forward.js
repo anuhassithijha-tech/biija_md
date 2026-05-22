@@ -1,9 +1,14 @@
 const { cmd } = require("../command");
 
+const {
+    generateForwardMessageContent,
+    generateWAMessageFromContent
+} = require("@whiskeysockets/baileys");
+
 cmd({
     pattern: "forward",
     alias: ["fw"],
-    desc: "Forward replied message to jid",
+    desc: "Real WhatsApp style forward",
     category: "tools",
     react: "📤",
     filename: __filename
@@ -12,7 +17,6 @@ async (conn, mek, m, { args, reply }) => {
 
     try {
 
-        // JID
         const jid = args[0];
 
         if (!jid) {
@@ -20,29 +24,49 @@ async (conn, mek, m, { args, reply }) => {
         }
 
         // Reply check
-        const contextInfo =
-            mek.message?.extendedTextMessage?.contextInfo;
+        const quoted = mek.message?.extendedTextMessage?.contextInfo;
 
-        if (!contextInfo || !contextInfo.quotedMessage) {
+        if (!quoted || !quoted.quotedMessage) {
             return reply("❌ Message එකකට reply කරන්න");
         }
 
-        // Quoted message
-        const quotedMessage = contextInfo.quotedMessage;
+        // Build original message
+        const message = {
+            key: {
+                remoteJid: mek.key.remoteJid,
+                fromMe: false,
+                id: quoted.stanzaId,
+                participant: quoted.participant
+            },
+            message: quoted.quotedMessage
+        };
 
-        // Forward exact message
+        // Generate forward content
+        const content = await generateForwardMessageContent(
+            message,
+            false
+        );
+
+        // Create WA message
+        const waMessage = generateWAMessageFromContent(
+            jid,
+            content,
+            {}
+        );
+
+        // Send
         await conn.relayMessage(
             jid,
-            quotedMessage,
+            waMessage.message,
             {
-                messageId: contextInfo.stanzaId
+                messageId: waMessage.key.id
             }
         );
 
-        reply("✅ Message Forwarded!");
+        reply("✅ Forwarded Successfully!");
 
     } catch (e) {
-        console.log(e);
+        console.log("[FORWARD ERROR]", e);
         reply("❌ Forward Failed");
     }
 });
