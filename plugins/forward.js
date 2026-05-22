@@ -1,27 +1,34 @@
-module.exports = {
-    name: 'forward',
+const { getContentType } = require('@whiskeysockets/baileys');
+
+commands.push({
+    pattern: 'forward',
     alias: ['fw'],
+    react: '📨',
     desc: 'Forward replied message',
     category: 'owner',
 
-    async execute(conn, mek, m, {
-        reply,
-        isOwner
+    async function(danuwa, mek, m, {
+        from,
+        body,
+        isOwner,
+        reply
     }) {
 
         try {
 
             if (!isOwner) {
-                return reply('❌ Owner only command');
+                return reply('❌ Owner only');
             }
 
-            // must reply message
-            if (!m.quoted) {
+            // check replied message
+            const quoted = mek.message?.extendedTextMessage?.contextInfo;
+
+            if (!quoted) {
                 return reply('⚠️ Reply to a message');
             }
 
-            // get jid
-            const args = m.body.split(' ');
+            // jid
+            const args = body.trim().split(' ');
             const jid = args[1];
 
             if (!jid) {
@@ -32,16 +39,33 @@ module.exports = {
                 );
             }
 
-            // forward message
-            await conn.sendMessage(jid, {
-                forward: m.quoted
-            });
+            // get replied message
+            const quotedMessage = await danuwa.loadMessageFromWA(
+                from,
+                quoted.stanzaId
+            );
 
-            reply('✅ Message forwarded successfully');
+            if (!quotedMessage) {
+                return reply('❌ Cannot load replied message');
+            }
+
+            // forward anything
+            await danuwa.forwardMessage(
+                jid,
+                quotedMessage.message,
+                false
+            );
+
+            return reply('✅ Forwarded Successfully');
 
         } catch (e) {
             console.log(e);
-            reply('❌ Forward failed');
+
+            return reply(
+`❌ Error
+
+${e}`
+            );
         }
     }
-}
+});
