@@ -1,72 +1,44 @@
-const { cmd } = require("../command");
+const config = require('../settings');
 
-const {
-    generateForwardMessageContent,
-    generateWAMessageFromContent
-} = require("@whiskeysockets/baileys");
+module.exports = {
+    name: 'forward',
+    alias: ['fw'],
+    desc: 'Forward replied message',
+    category: 'utility',
+    react: '📨',
 
-cmd({
-    pattern: "forward",
-    alias: ["fw"],
-    desc: "Real WhatsApp style forward",
-    category: "tools",
-    react: "📤",
-    filename: __filename
-},
-async (conn, mek, m, { args, reply }) => {
+    async execute(conn, mek, m, {
+        from,
+        reply,
+        isOwner
+    }) {
+        try {
 
-    try {
-
-        const jid = args[0];
-
-        if (!jid) {
-            return reply("❌ Example:\n.forward 94771234567@s.whatsapp.net");
-        }
-
-        // Reply check
-        const quoted = mek.message?.extendedTextMessage?.contextInfo;
-
-        if (!quoted || !quoted.quotedMessage) {
-            return reply("❌ Message එකකට reply කරන්න");
-        }
-
-        // Build original message
-        const message = {
-            key: {
-                remoteJid: mek.key.remoteJid,
-                fromMe: false,
-                id: quoted.stanzaId,
-                participant: quoted.participant
-            },
-            message: quoted.quotedMessage
-        };
-
-        // Generate forward content
-        const content = await generateForwardMessageContent(
-            message,
-            false
-        );
-
-        // Create WA message
-        const waMessage = generateWAMessageFromContent(
-            jid,
-            content,
-            {}
-        );
-
-        // Send
-        await conn.relayMessage(
-            jid,
-            waMessage.message,
-            {
-                messageId: waMessage.key.id
+            if (!isOwner) {
+                return reply('❌ Owner only command');
             }
-        );
 
-        reply("✅ Forwarded Successfully!");
+            // command example
+            // .forward 947XXXXXXXX@s.whatsapp.net
 
-    } catch (e) {
-        console.log("[FORWARD ERROR]", e);
-        reply("❌ Forward Failed");
+            const jid = m.body.split(' ')[1];
+
+            if (!jid) {
+                return reply('⚠️ Please provide target number\n\nExample:\n.forward 947XXXXXXXX@s.whatsapp.net');
+            }
+
+            if (!m.quoted) {
+                return reply('⚠️ Reply to a message');
+            }
+
+            // Forward message
+            await conn.forwardMessage(jid, m.quoted.message, false);
+
+            reply('✅ Message forwarded successfully');
+
+        } catch (e) {
+            console.log(e);
+            reply('❌ Error while forwarding');
+        }
     }
-});
+}
