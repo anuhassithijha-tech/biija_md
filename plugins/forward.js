@@ -1,10 +1,10 @@
 const { commands } = require('../command');
 
 commands.push({
-    pattern: "forward",
-    alias: ["fw"],
+    pattern: "fw",
+    alias: ["forward"],
     react: "📨",
-    desc: "Forward replied media/message",
+    desc: "Forward replied media",
     category: "owner",
 
     async function(danuwa, mek, m, {
@@ -15,61 +15,51 @@ commands.push({
 
         try {
 
-            // OWNER CHECK
-            const owners = ["94742838813"];
+            // OWNER
+            const owners = ["9442838813"];
 
             if (!owners.includes(senderNumber)) {
                 return reply("❌ Owner only");
             }
 
             // MUST REPLY
-            const quoted =
+            const context =
                 mek.message?.extendedTextMessage?.contextInfo;
 
-            if (!quoted || !quoted.quotedMessage) {
-                return reply("⚠️ Reply to a photo/video/document");
+            if (!context?.quotedMessage) {
+                return reply("⚠️ Reply to media/message");
             }
 
-            // TARGET JID
-            const args = body.trim().split(" ");
-            const jid = args[1];
+            // JID
+            const jid = body.split(" ")[1];
 
             if (!jid) {
                 return reply(
-`⚠️ Example:
+`Example:
 
 .fw 103225277559013@lid`
                 );
             }
 
-            // CREATE REAL WEB MESSAGE
-            const message = {
-                key: {
-                    remoteJid: mek.key.remoteJid,
-                    fromMe: false,
-                    id: quoted.stanzaId,
-                    participant: quoted.participant
-                },
-                message: quoted.quotedMessage
-            };
+            // GET REAL QUOTED MESSAGE
+            const msg = context.quotedMessage;
 
-            // FORWARD
-            await danuwa.copyNForward(
+            // SEND EXACT MESSAGE
+            await danuwa.sendMessage(
                 jid,
-                message,
-                true
+                msg
             );
 
             return reply("✅ Successfully forwarded!");
 
-        } catch (err) {
+        } catch (e) {
 
-            console.log(err);
+            console.log(e);
 
             return reply(
 `❌ Error
 
-${err}`
+${e}`
             );
         }
     }
