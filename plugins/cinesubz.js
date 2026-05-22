@@ -100,7 +100,7 @@ cmd({
                         const selectedDL = validDownloads[dlChoice];
                         await bot.sendMessage(from, { text: `⬇️ *Sending ${selectedDL.quality}...*` }, { quoted: dMsg });
                         try {
-                            const finalRes = await axios.get(`https://new77777.vercel.app/movie/cinesubz?url=${encodeURIComponent(selectedDL.url)}&api_key=මෙතනටත් key එක දාන්න`);
+                            const finalRes = await axios.get(`https://new77777.vercel.app/movie/cinesubz?url=${encodeURIComponent(selectedDL.url)}&api_key=lakiya_6dfa6b43064dd56b5c71acb12fc9b30e4d88dd0deb19c8b14f897d12fc87b8e6`);
                             const finalData = finalRes.data;
                             const links = finalData.data?.download || [];
                             const bestLink = links.find(l => l.name === "unknown") || links[0];
