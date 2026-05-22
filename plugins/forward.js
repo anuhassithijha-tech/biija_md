@@ -1,34 +1,31 @@
-const { getContentType } = require('@whiskeysockets/baileys');
+const { commands } = require('../command');
 
 commands.push({
-    pattern: 'forward',
-    alias: ['fw'],
-    react: '📨',
-    desc: 'Forward replied message',
-    category: 'owner',
+    pattern: "forward",
+    alias: ["fw"],
+    react: "📨",
+    desc: "Forward messages",
+    category: "owner",
 
     async function(danuwa, mek, m, {
-        from,
         body,
-        isOwner,
-        reply
+        reply,
+        isOwner
     }) {
 
         try {
 
             if (!isOwner) {
-                return reply('❌ Owner only');
+                return reply("❌ Owner only");
             }
 
-            // check replied message
-            const quoted = mek.message?.extendedTextMessage?.contextInfo;
-
-            if (!quoted) {
-                return reply('⚠️ Reply to a message');
+            // reply check
+            if (!mek.message.extendedTextMessage) {
+                return reply("⚠️ Reply to a message");
             }
 
             // jid
-            const args = body.trim().split(' ');
+            const args = body.split(" ");
             const jid = args[1];
 
             if (!jid) {
@@ -39,32 +36,34 @@ commands.push({
                 );
             }
 
-            // get replied message
-            const quotedMessage = await danuwa.loadMessageFromWA(
-                from,
-                quoted.stanzaId
-            );
+            // context info
+            const context = mek.message.extendedTextMessage.contextInfo;
 
-            if (!quotedMessage) {
-                return reply('❌ Cannot load replied message');
-            }
-
-            // forward anything
-            await danuwa.forwardMessage(
+            // forward
+            await danuwa.sendMessage(
                 jid,
-                quotedMessage.message,
-                false
+                {
+                    forward: {
+                        key: {
+                            remoteJid: mek.key.remoteJid,
+                            id: context.stanzaId,
+                            participant: context.participant
+                        },
+                        message: context.quotedMessage
+                    }
+                }
             );
 
-            return reply('✅ Forwarded Successfully');
+            return reply("✅ Forwarded Successfully");
 
-        } catch (e) {
-            console.log(e);
+        } catch (err) {
+
+            console.log(err);
 
             return reply(
 `❌ Error
 
-${e}`
+${err}`
             );
         }
     }
