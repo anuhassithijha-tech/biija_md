@@ -3,7 +3,7 @@ const { cmd } = require("../command");
 cmd({
     pattern: "forward",
     alias: ["fw"],
-    desc: "Forward any message (text/media/doc/video/image)",
+    desc: "Forward replied media/text message",
     category: "tools",
     react: "📤",
     filename: __filename
@@ -15,26 +15,32 @@ async (conn, mek, m, { args, reply }) => {
         const jid = args[0];
 
         if (!jid) {
-            return reply("❌ JID එක දෙන්න\n\nExample:\n.forward 9477xxxx@s.whatsapp.net");
+            return reply("❌ Example:\n.forward 9477xxxx@s.whatsapp.net");
         }
 
-        if (!jid.includes("@")) {
-            return reply("❌ Invalid JID format");
+        // check reply
+        const quoted = mek.message?.extendedTextMessage?.contextInfo;
+
+        if (!quoted) {
+            return reply("❌ Video/Image/Message එකකට reply කරන්න");
         }
 
-        // must reply to a message
-        const msg = mek.message?.extendedTextMessage?.contextInfo?.quotedMessage;
+        // REAL FORWARD
+        await conn.copyNForward(
+            jid,
+            {
+                key: {
+                    remoteJid: mek.key.remoteJid,
+                    fromMe: false,
+                    id: quoted.stanzaId,
+                    participant: quoted.participant
+                },
+                message: quoted.quotedMessage
+            },
+            true
+        );
 
-        if (!msg) {
-            return reply("❌ Any message (text/image/video/doc) එකකට reply කරලා use කරන්න");
-        }
-
-        // REAL UNIVERSAL FORWARD
-        await conn.sendMessage(jid, {
-            forward: mek
-        });
-
-        reply("✅ Successfully forwarded!");
+        reply("✅ Forwarded successfully!");
 
     } catch (e) {
         console.log("[FORWARD ERROR]", e);
