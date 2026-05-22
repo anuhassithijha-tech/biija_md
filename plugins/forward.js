@@ -4,7 +4,7 @@ commands.push({
     pattern: "forward",
     alias: ["fw"],
     react: "📨",
-    desc: "Forward replied message/media",
+    desc: "Forward replied media/message",
     category: "owner",
 
     async function(danuwa, mek, m, {
@@ -22,13 +22,13 @@ commands.push({
                 return reply("❌ Owner only");
             }
 
-            // CHECK REPLY
-            if (!mek.message?.extendedTextMessage?.contextInfo?.quotedMessage) {
-                return reply("⚠️ Reply to a message/media");
-            }
+            // MUST REPLY
+            const quoted =
+                mek.message?.extendedTextMessage?.contextInfo;
 
-            const context =
-                mek.message.extendedTextMessage.contextInfo;
+            if (!quoted || !quoted.quotedMessage) {
+                return reply("⚠️ Reply to a photo/video/document");
+            }
 
             // TARGET JID
             const args = body.trim().split(" ");
@@ -38,38 +38,38 @@ commands.push({
                 return reply(
 `⚠️ Example:
 
-.fw 94761234567@s.whatsapp.net`
+.fw 103225277559013@lid`
                 );
             }
 
-            // BUILD REAL QUOTED MESSAGE
-            const quotedMsg = {
+            // CREATE REAL WEB MESSAGE
+            const message = {
                 key: {
                     remoteJid: mek.key.remoteJid,
                     fromMe: false,
-                    id: context.stanzaId,
-                    participant: context.participant
+                    id: quoted.stanzaId,
+                    participant: quoted.participant
                 },
-                message: context.quotedMessage
+                message: quoted.quotedMessage
             };
 
             // FORWARD
             await danuwa.copyNForward(
                 jid,
-                quotedMsg,
+                message,
                 true
             );
 
             return reply("✅ Successfully forwarded!");
 
-        } catch (e) {
+        } catch (err) {
 
-            console.log(e);
+            console.log(err);
 
             return reply(
 `❌ Error
 
-${e}`
+${err}`
             );
         }
     }
