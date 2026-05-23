@@ -1,9 +1,12 @@
 const { cmd } = require("../command");
 const axios = require("axios");
 
+const API_KEY =
+    "lakiya_6dfa6b43064dd56b5c71acb12fc9b30e4d88dd0deb19c8b14f897d12fc87b8e6";
+
 cmd({
     pattern: "dub",
-    desc: "Download movies",
+    desc: "Download Dubbed Movies",
     category: "movie",
     filename: __filename,
 }, async (bot, mek, m, { from, q, reply }) => {
@@ -16,206 +19,317 @@ cmd({
 
         await reply("🔎 *Searching Movies...*");
 
-        // SEARCH API
+        // ================= SEARCH API =================
+
         const searchRes = await axios.get(
             "https://nexora.laksidunimsara.com/api/dubzone/search",
             {
                 params: {
                     q: q,
-                    api_key: "lakiya_6dfa6b43064dd56b5c71acb12fc9b30e4d88dd0deb19c8b14f897d12fc87b8e6"
-                }
+                    api_key: API_KEY
+                },
+                timeout: 30000
             }
         );
 
         const searchData = searchRes.data;
 
-        if (!searchData.status || !searchData.results?.length) {
+        console.log(
+            "SEARCH RESPONSE:",
+            JSON.stringify(searchData, null, 2)
+        );
+
+        // API eke results / data dekama support
+        const results =
+            searchData.results ||
+            searchData.data ||
+            [];
+
+        if (!searchData.status || !results.length) {
             return await reply("❌ No movies found");
         }
 
-        const results = searchData.results.slice(0, 15);
+        const movies = results.slice(0, 15);
 
-        let text = `╭━━〔 *DUB MOVIES* 〕━━⬣\n`;
-        text += `┃ 🔍 Query: ${q}\n`;
-        text += `╰━━━━━━━━━━━━━━⬣\n\n`;
+        let list = `╭━━〔 *DUB MOVIES* 〕━━⬣\n`;
+        list += `┃ 🔍 Query: ${q}\n`;
+        list += `╰━━━━━━━━━━━━━━⬣\n\n`;
 
-        results.forEach((v, i) => {
-            text += `*${i + 1}.* ${v.title}\n`;
+        movies.forEach((movie, i) => {
+            list += `*${i + 1}.* ${movie.title}\n`;
         });
 
-        text += `\n_Reply with movie number_`;
+        list += `\n_Reply with movie number_`;
 
-        const sent = await bot.sendMessage(
+        const sentMsg = await bot.sendMessage(
             from,
-            { text },
+            { text: list },
             { quoted: mek }
         );
 
-        const msgID = sent.key.id;
+        const messageID = sentMsg.key.id;
 
-        const handleReply = async ({ messages }) => {
+        // ================= SELECT MOVIE =================
 
-            const msg = messages[0];
-            if (!msg.message) return;
+        const handleSelection = async ({ messages }) => {
 
-            const body =
-                msg.message.conversation ||
-                msg.message.extendedTextMessage?.text;
+            try {
 
-            const isReply =
-                msg.message.extendedTextMessage?.contextInfo?.stanzaId === msgID;
+                const msg = messages[0];
+                if (!msg?.message) return;
 
-            if (!isReply) return;
-            if (msg.key.remoteJid !== from) return;
+                const text =
+                    msg.message.conversation ||
+                    msg.message.extendedTextMessage?.text;
 
-            bot.ev.off("messages.upsert", handleReply);
+                const isReply =
+                    msg.message.extendedTextMessage
+                        ?.contextInfo?.stanzaId === messageID;
 
-            const index = parseInt(body) - 1;
+                if (!isReply) return;
+                if (msg.key.remoteJid !== from) return;
 
-            if (isNaN(index) || index < 0 || index >= results.length) {
-                return await reply("❌ Invalid Number");
-            }
+                bot.ev.off("messages.upsert", handleSelection);
 
-            const selected = results[index];
+                const choice = parseInt(text) - 1;
 
-            await reply("📥 Fetching movie details...");
+                if (
+                    isNaN(choice) ||
+                    choice < 0 ||
+                    choice >= movies.length
+                ) {
+                    return await reply("❌ Invalid number");
+                }
 
-            // MOVIE DETAILS API
-            const detailsRes = await axios.get(
-                "https://nexora.laksidunimsara.com/api/dubzone/movie",
-                {
-                    params: {
-                        url: selected.link,
-                        slug: selected.slug,
-                        api_key: "lakiya_6dfa6b43064dd56b5c71acb12fc87b8e6"
+                const selected = movies[choice];
+
+                // slug auto generate
+                const slug =
+                    selected.slug ||
+                    selected.link
+                        ?.split("/")
+                        .filter(Boolean)
+                        .pop();
+
+                if (!slug) {
+                    return await reply("❌ Movie slug not found");
+                }
+
+                await reply("📥 Fetching movie details...");
+
+                // ================= DETAILS API =================
+
+                const detailsRes = await axios.get(
+                    "https://nexora.laksidunimsara.com/api/dubzone/movie",
+                    {
+                        params: {
+                            url: selected.link,
+                            slug: slug,
+                            api_key: API_KEY
+                        },
+                        timeout: 30000
                     }
-                }
-            );
+                );
 
-            const movie = detailsRes.data.data;
+                const detailsData = detailsRes.data;
 
-            if (!movie) {
-                return await reply("❌ Movie details not found");
-            }
+                console.log(
+                    "DETAILS RESPONSE:",
+                    JSON.stringify(detailsData, null, 2)
+                );
 
-            let caption =
-                `🎬 *${movie.title}*\n\n` +
-                `⭐ IMDb: ${movie.imdb_rating || "N/A"}\n` +
-                `📅 Year: ${movie.year || "N/A"}\n` +
-                `🌍 Country: ${movie.country || "N/A"}\n\n` +
-                `📖 ${movie.description?.slice(0, 300) || "No Description"}...`;
+                const movie =
+                    detailsData.data ||
+                    detailsData.result ||
+                    detailsData;
 
-            await bot.sendMessage(
-                from,
-                {
-                    image: { url: movie.poster },
-                    caption
-                },
-                { quoted: msg }
-            );
-
-            // DOWNLOAD API
-            const dlRes = await axios.get(
-                "https://nexora.laksidunimsara.com/api/dubzone/downloads",
-                {
-                    params: {
-                        slug: selected.slug,
-                        api_key: "lakiya_6dfa6b43064dd56b5c71acb12fc87b8e6"
-                    }
-                }
-            );
-
-            const dlData = dlRes.data;
-
-            if (!dlData.status || !dlData.data?.download?.length) {
-                return await reply("❌ Download links not found");
-            }
-
-            const links = dlData.data.download;
-
-            let dlText = `╭━━〔 *DOWNLOAD OPTIONS* 〕━━⬣\n\n`;
-
-            links.forEach((v, i) => {
-                dlText += `*${i + 1}.* ${v.name || "Quality"}\n`;
-            });
-
-            dlText += `\n╰━━━━━━━━━━━━━━⬣\n`;
-            dlText += `_Reply with download number_`;
-
-            const dlMsg = await bot.sendMessage(
-                from,
-                { text: dlText },
-                { quoted: msg }
-            );
-
-            const dlMsgID = dlMsg.key.id;
-
-            const handleDL = async ({ messages }) => {
-
-                const dmsg = messages[0];
-                if (!dmsg.message) return;
-
-                const body2 =
-                    dmsg.message.conversation ||
-                    dmsg.message.extendedTextMessage?.text;
-
-                const isReply2 =
-                    dmsg.message.extendedTextMessage?.contextInfo?.stanzaId === dlMsgID;
-
-                if (!isReply2) return;
-                if (dmsg.key.remoteJid !== from) return;
-
-                bot.ev.off("messages.upsert", handleDL);
-
-                const choose = parseInt(body2) - 1;
-
-                if (isNaN(choose) || choose < 0 || choose >= links.length) {
-                    return await reply("❌ Invalid Download Number");
+                if (!movie) {
+                    return await reply("❌ Movie details not found");
                 }
 
-                const file = links[choose];
+                const caption =
+                    `🎬 *${movie.title || "Unknown"}*\n\n` +
+                    `⭐ IMDb: ${movie.imdb_rating || "N/A"}\n` +
+                    `📅 Year: ${movie.year || "N/A"}\n` +
+                    `🎭 Genre: ${movie.genre || "N/A"}\n` +
+                    `🌍 Country: ${movie.country || "N/A"}\n\n` +
+                    `📖 ${movie.description?.slice(0, 400) || "No description available"}...`;
 
-                await reply("⬇️ Sending Movie File...");
+                // poster fallback
+                const poster =
+                    movie.poster ||
+                    "https://files.catbox.moe/7an9on.jpg";
 
                 await bot.sendMessage(
                     from,
                     {
-                        document: { url: file.url },
-                        mimetype: "video/mp4",
-                        fileName: `${movie.title}.mp4`,
-                        caption:
-                            `🎬 ${movie.title}\n` +
-                            `📥 ${file.name || "Movie"}`
+                        image: { url: poster },
+                        caption
                     },
-                    { quoted: dmsg }
+                    { quoted: msg }
                 );
 
-                await bot.sendMessage(from, {
-                    react: {
-                        text: "✅",
-                        key: dmsg.key
+                // ================= DOWNLOAD API =================
+
+                const downloadRes = await axios.get(
+                    "https://nexora.laksidunimsara.com/api/dubzone/downloads",
+                    {
+                        params: {
+                            slug: slug,
+                            api_key: API_KEY
+                        },
+                        timeout: 30000
                     }
+                );
+
+                const downloadData = downloadRes.data;
+
+                console.log(
+                    "DOWNLOAD RESPONSE:",
+                    JSON.stringify(downloadData, null, 2)
+                );
+
+                const downloads =
+                    downloadData.data?.download ||
+                    downloadData.download ||
+                    [];
+
+                if (!downloads.length) {
+                    return await reply("❌ Download links not found");
+                }
+
+                let dlText = `╭━━〔 *DOWNLOAD OPTIONS* 〕━━⬣\n\n`;
+
+                downloads.forEach((dl, i) => {
+                    dlText += `*${i + 1}.* ${dl.name || dl.quality || "Movie"}\n`;
                 });
 
-            };
+                dlText += `\n╰━━━━━━━━━━━━━━⬣\n`;
+                dlText += `_Reply with download number_`;
 
-            bot.ev.on("messages.upsert", handleDL);
+                const dlMsg = await bot.sendMessage(
+                    from,
+                    { text: dlText },
+                    { quoted: msg }
+                );
 
-            setTimeout(() => {
-                bot.ev.off("messages.upsert", handleDL);
-            }, 120000);
+                const dlMsgID = dlMsg.key.id;
 
+                // ================= DOWNLOAD SELECT =================
+
+                const handleDownload = async ({ messages }) => {
+
+                    try {
+
+                        const dMsg = messages[0];
+                        if (!dMsg?.message) return;
+
+                        const dText =
+                            dMsg.message.conversation ||
+                            dMsg.message.extendedTextMessage?.text;
+
+                        const isDLReply =
+                            dMsg.message.extendedTextMessage
+                                ?.contextInfo?.stanzaId === dlMsgID;
+
+                        if (!isDLReply) return;
+                        if (dMsg.key.remoteJid !== from) return;
+
+                        bot.ev.off(
+                            "messages.upsert",
+                            handleDownload
+                        );
+
+                        const dlChoice = parseInt(dText) - 1;
+
+                        if (
+                            isNaN(dlChoice) ||
+                            dlChoice < 0 ||
+                            dlChoice >= downloads.length
+                        ) {
+                            return await reply("❌ Invalid selection");
+                        }
+
+                        const selectedDL = downloads[dlChoice];
+
+                        if (!selectedDL.url) {
+                            return await reply(
+                                "❌ Download URL not found"
+                            );
+                        }
+
+                        await reply("⬇️ Sending movie file...");
+
+                        await bot.sendMessage(
+                            from,
+                            {
+                                document: {
+                                    url: selectedDL.url
+                                },
+                                mimetype: "video/mp4",
+                                fileName: `${movie.title || "movie"}.mp4`,
+                                caption:
+                                    `🎬 ${movie.title || "Movie"}\n` +
+                                    `📥 ${selectedDL.name || "Download"}`
+                            },
+                            { quoted: dMsg }
+                        );
+
+                        await bot.sendMessage(from, {
+                            react: {
+                                text: "✅",
+                                key: dMsg.key
+                            }
+                        });
+
+                    } catch (err) {
+
+                        console.log("DOWNLOAD ERROR:", err);
+
+                        await reply(
+                            "❌ Failed to send movie"
+                        );
+                    }
+                };
+
+                bot.ev.on(
+                    "messages.upsert",
+                    handleDownload
+                );
+
+                setTimeout(() => {
+                    bot.ev.off(
+                        "messages.upsert",
+                        handleDownload
+                    );
+                }, 120000);
+
+            } catch (err) {
+
+                console.log("SELECTION ERROR:", err);
+
+                await reply(
+                    "❌ Failed to fetch movie details"
+                );
+            }
         };
 
-        bot.ev.on("messages.upsert", handleReply);
+        bot.ev.on(
+            "messages.upsert",
+            handleSelection
+        );
 
         setTimeout(() => {
-            bot.ev.off("messages.upsert", handleReply);
+            bot.ev.off(
+                "messages.upsert",
+                handleSelection
+            );
         }, 120000);
 
-    } catch (e) {
-        console.log(e);
-        return await reply("❌ Error occurred");
-    }
+    } catch (error) {
 
+        console.log("MAIN ERROR:", error);
+
+        await reply("❌ Something went wrong");
+    }
 });
