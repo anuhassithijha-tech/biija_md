@@ -2,7 +2,7 @@ const { cmd } = require("../command");
 
 cmd({
     pattern: "jid",
-    desc: "Get real jid",
+    desc: "Get JID",
     category: "tools",
     filename: __filename
 },
@@ -10,23 +10,23 @@ async (conn, mek, m, { reply }) => {
 
     let jid;
 
-    // Reply message user real jid
+    // Reply user
     if (m.quoted) {
-        jid = m.quoted.sender;
+        jid =
+            m.quoted.sender ||
+            m.quoted.participant ||
+            m.quoted.chat;
     }
 
-    // Group real jid
+    // Group
     else if (m.isGroup) {
         jid = m.chat;
     }
 
-    // Private chat real jid
+    // Private
     else {
         jid = m.sender;
     }
-
-    // Remove LID if exists
-    jid = jid.replace(/@lid/g, "@s.whatsapp.net");
 
     return reply(jid);
 });
