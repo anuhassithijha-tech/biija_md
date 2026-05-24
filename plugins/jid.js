@@ -2,21 +2,16 @@ const { cmd } = require("../command");
 
 cmd({
     pattern: "jid",
-    alias: ["getjid"],
-    desc: "Get sender JID",
+    desc: "Get Real JID",
     category: "tools",
-    react: "🆔",
     filename: __filename
 },
-async (conn, mek, m, { reply, sender, from }) => {
+async (conn, mek, m, { reply }) => {
 
-    try {
-        const jid = mek.key.participant || mek.key.remoteJid;
+    // Group / User real JID
+    let jid = m.chat;
 
-        await reply(`🆔 Your JID:\n\n${jid}`);
+    // Send real JID only
+    return reply(jid);
 
-    } catch (e) {
-        console.log(e);
-        reply("❌ Error getting JID");
-    }
 });
